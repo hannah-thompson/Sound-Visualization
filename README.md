@@ -5,6 +5,21 @@ This project will visually representing sine waves being read in real time from 
 
 These instructions will help you install the dependencies necessary to run this program.
 
+### Installing PyQt5
+
+Run the following commands in terminal:
+
+```
+pip3 install PyQt5
+```
+
+### Installing matplotlib
+
+Run the following commands in terminal:
+
+```
+pip3 install matplotlib
+```
 ### Installing Kivy
 
 Run the following commands in terminal:
