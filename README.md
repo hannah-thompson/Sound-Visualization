@@ -5,6 +5,14 @@ This project will visually representing sine waves being read in real time from 
 
 These instructions will help you install the dependencies necessary to run this program.
 
+### Installing Kivy
+
+Run the following commands in terminal:
+
+```
+pip3 install kivy
+```
+
 ### Installing Bokeh
 
 Run the following commands in terminal:
