@@ -1,19 +1,11 @@
-# https://flothesof.github.io/pyqt-microphone-fft-application.html
+# see "License Acknowledgement" for accrediton to original source code
+# adapted from florian, who extended from the SciPy 2015 Vispy talk opening example
+# https://github.com/flothesof/LiveFFTPitchTracker
 
 ### NOTES ###
-# start stop feature
-# just keep top screen for now // store small
-# move to USB input
-# want THEM to calculate frequency after stopping
 # sine tone generater with Hz, sliding bar (other goal) -> separate
-# getting USB and capturing frequency -> start stop to analyze
-# bottom get rid of spectrograph
 
 
-"""
-Created on May 23 2014
-@author: florian
-"""
 import sys
 import threading
 import atexit
@@ -26,26 +18,40 @@ from PyQt5 import QtGui, QtCore, QtWidgets
 from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qt4agg import NavigationToolbar2QT as NavigationToolbar
 
-# class taken from the SciPy 2015 Vispy talk opening example
-# see https://github.com/vispy/vispy/pull/928
-
 # gets you the instance of the item we are gathering data from
-class MicrophoneRecorder(object):
+class SoundRecorder(object):
 
     # can go back and change rate and chunksize if needed
     def __init__(self, rate=4000, chunksize=1024):
         self.rate = rate
         self.chunksize = chunksize
+
+        # initialize a pyAudio session
         self.p = pyaudio.PyAudio()
 
         # change channel to be USB source
-        # changed input here with input_device_index (got index from get_USB)
+        info = self.p.get_host_api_info_by_index(0)
+        numdevices = info.get('deviceCount')
+
+        # get the index we need to read from
+        # for actual device, want name == "USB Audio CODEC"
+        # when practicing with mic -> "Yeti Stereo Microphone"
+        index = 3
+        for i in range(0, numdevices):
+            if ((self.p.get_device_info_by_host_api_device_index(0, i).get('maxInputChannels')) > 0) and (
+                self.p.get_device_info_by_host_api_device_index(0, i).get('name') == "USB Audio CODEC"):
+                    index = i
+
+
+        # changed input here with input_device_index being derived from above
         self.stream = self.p.open(format=pyaudio.paInt16,
                                   channels=1,
                                   rate=self.rate,
                                   input=True,
                                   frames_per_buffer=self.chunksize,
-                                  stream_callback=self.new_frame, input_device_index = 3)
+                                  stream_callback=self.new_frame, input_device_index = index)
+
+
         self.lock = threading.Lock()
         self.stop = False
         self.frames = []
@@ -98,107 +104,86 @@ class LiveFFTWidget(QtWidgets.QWidget):
         self.initMplWidget()
 
     def initUI(self):
+        # timer for calls, taken from:
+        # http://ralsina.me/weblog/posts/BB974.html
+        timer = QtCore.QTimer()
+        timer.timeout.connect(self.handleNewData)
+        # timer.start(50) # don't start until hit "start button"
+        # keep reference to timer
+        self.timer = timer
 
-        hbox_gain = QtWidgets.QHBoxLayout()
-        autoGain = QtWidgets.QLabel('Auto gain for frequency spectrum')
-        autoGainCheckBox = QtWidgets.QCheckBox(checked=True)
-        hbox_gain.addWidget(autoGain)
-        hbox_gain.addWidget(autoGainCheckBox)
+        # create start and stop button
+        # hold together in a horizontal box
+        hbox_startStop = QtWidgets.QHBoxLayout()
+        startButton = QtWidgets.QPushButton("Start Recording")
+        stopButton = QtWidgets.QPushButton("Stop Recording")
+        startButton.clicked.connect(lambda: self.startRecording())
+        stopButton.clicked.connect(lambda: self.stopRecording())
+        hbox_startStop.addWidget(startButton)
+        hbox_startStop.addWidget(stopButton)
 
-        # reference to checkbox
-        self.autoGainCheckBox = autoGainCheckBox
+        # references to buttons for later use
+        self.startButton = startButton
+        self.stopButton = stopButton
 
-        hbox_fixedGain = QtWidgets.QHBoxLayout()
-        fixedGain = QtWidgets.QLabel('Manual gain level for frequency spectrum')
-        fixedGainSlider = QtWidgets.QSlider(QtCore.Qt.Horizontal)
-        hbox_fixedGain.addWidget(fixedGain)
-        hbox_fixedGain.addWidget(fixedGainSlider)
-
-        self.fixedGainSlider = fixedGainSlider
-
+        # create a vertical box to hold all items in
         vbox = QtWidgets.QVBoxLayout()
 
-        vbox.addLayout(hbox_gain)
-        vbox.addLayout(hbox_fixedGain)
+        # add in the buttons
+        vbox.addLayout(hbox_startStop)
 
-        # mpl figure
+        # add in the main figure and it's toolbar
         self.main_figure = MplFigure(self)
         vbox.addWidget(self.main_figure.toolbar)
         vbox.addWidget(self.main_figure.canvas)
 
         self.setLayout(vbox)
 
-        self.setGeometry(300, 300, 350, 300)
-        self.setWindowTitle('LiveFFT')
+        # set the size the window opens to
+        self.setGeometry(300, 300, 1000, 1000)
+        # set the title
+        self.setWindowTitle('Sound Visualization')
         self.show()
-        # timer for calls, taken from:
-        # http://ralsina.me/weblog/posts/BB974.html
-        timer = QtCore.QTimer()
-        timer.timeout.connect(self.handleNewData)
-        timer.start(50)
-        # keep reference to timer
-        self.timer = timer
 
+    def startRecording(self):
+        self.timer.start(50)
+
+    def stopRecording(self):
+        self.timer.stop()
 
     def initData(self):
-        mic = MicrophoneRecorder()
-        mic.start()
+        sound = SoundRecorder()
+        sound.start()
 
-        # keeps reference to mic
-        self.mic = mic
+        # keeps reference to sound data
+        self.sound = sound
 
         # computes the parameters that will be used during plotting
-        self.freq_vect = np.fft.rfftfreq(mic.chunksize,
-                                         1./mic.rate)
-        self.time_vect = np.arange(mic.chunksize, dtype=np.float32) / mic.rate * 1000
+        self.time_vect = np.arange(sound.chunksize, dtype=np.float32) / sound.rate * 1000
 
     def connectSlots(self):
         pass
 
     def initMplWidget(self):
-        """creates initial matplotlib plots in the main window and keeps
-        references for further use"""
-        # top plot
+        # create the plot to represent the sound wave
         self.ax_top = self.main_figure.figure.add_subplot(211)
         self.ax_top.set_ylim(-32768, 32768)
         self.ax_top.set_xlim(0, self.time_vect.max())
         self.ax_top.set_xlabel(u'time (ms)', fontsize=6)
 
-        # bottom plot
-        '''
-        self.ax_bottom = self.main_figure.figure.add_subplot(212)
-        self.ax_bottom.set_ylim(0, 1)
-        self.ax_bottom.set_xlim(0, self.freq_vect.max())
-        self.ax_bottom.set_xlabel(u'frequency (Hz)', fontsize=6)
-        # line objects
-        '''
         self.line_top, = self.ax_top.plot(self.time_vect,
                                          np.ones_like(self.time_vect))
-
-        #self.line_bottom, = self.ax_bottom.plot(self.freq_vect, np.ones_like(self.freq_vect))
-
-        # tight layout
-        #plt.tight_layout()
 
     def handleNewData(self):
         """ handles the asynchroneously collected sound chunks """
         # gets the latest frames
-        frames = self.mic.get_frames()
+        frames = self.sound.get_frames()
 
         if len(frames) > 0:
             # keeps only the last frame
             current_frame = frames[-1]
             # plots the time signal
             self.line_top.set_data(self.time_vect, current_frame)
-
-            # computes and plots the fft signal #we don't need this or boxes
-            fft_frame = np.fft.rfft(current_frame)
-            if self.autoGainCheckBox.checkState() == QtCore.Qt.Checked:
-                fft_frame /= np.abs(fft_frame).max()
-            else:
-                fft_frame *= (1 + self.fixedGainSlider.value()) / 5000000.
-                #print(np.abs(fft_frame).max())
-            #self.line_bottom.set_data(self.freq_vect, np.abs(fft_frame))
 
             # refreshes the plots
             self.main_figure.canvas.draw()

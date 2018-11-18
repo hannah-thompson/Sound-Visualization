@@ -1,6 +1,11 @@
 # Sound-Visualization
 This project will visually representing sine waves being read in real time from an electric guitar.
 
+## Code Updates
+pyqt_sound.py has been updated for our needs, and now includes "Start Recording" and "Stop Recording" buttons and functionalities. 
+
+The files denoted "practice," will remain in the repo while research is being done, but currently do not serve a purpose outside of idea generation.
+
 ## Getting Started
 
 These instructions will help you install the dependencies necessary to run this program.
