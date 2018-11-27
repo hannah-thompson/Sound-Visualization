@@ -4,7 +4,8 @@
 
 ### NOTES ###
 # sine tone generater with Hz, sliding bar (other goal) -> separate
-
+# note to self: might want to add in functionality where you can pick your sound source,
+# in order to be more adaptable
 
 import sys
 import threading
@@ -25,37 +26,47 @@ class SoundRecorder(object):
     def __init__(self, rate=4000, chunksize=1024):
         self.rate = rate
         self.chunksize = chunksize
+        self.stream = 0
 
         # initialize a pyAudio session
         self.p = pyaudio.PyAudio()
+        self.choices = []
+        self.updateInputOptions()
 
+        self.lock = threading.Lock()
+        self.stop = False
+        self.frames = []
+        atexit.register(self.close)
+
+    def updateInputOptions(self):
         # change channel to be USB source
+        self.choices.clear()
         info = self.p.get_host_api_info_by_index(0)
         numdevices = info.get('deviceCount')
 
         # get the index we need to read from
         # for actual device, want name == "USB Audio CODEC"
         # when practicing with mic -> "Yeti Stereo Microphone"
-        index = 3
+
         for i in range(0, numdevices):
-            if ((self.p.get_device_info_by_host_api_device_index(0, i).get('maxInputChannels')) > 0) and (
-                self.p.get_device_info_by_host_api_device_index(0, i).get('name') == "USB Audio CODEC"):
-                    index = i
+            if ((self.p.get_device_info_by_host_api_device_index(0, i).get('maxInputChannels')) > 0):
+                name = self.p.get_device_info_by_host_api_device_index(0, i).get('name')
+                index = i
+                stringLabel = str(name) + " - " + str(index)
+                self.choices.append(stringLabel)
 
-
-        # changed input here with input_device_index being derived from above
-        self.stream = self.p.open(format=pyaudio.paInt16,
+    def chooseInput(self, text):
+        if(text == "No Input Selected"):
+            return
+        else:
+            parts = text.split()
+            index = int(parts[-1])
+            self.stream = self.p.open(format=pyaudio.paInt16,
                                   channels=1,
                                   rate=self.rate,
                                   input=True,
                                   frames_per_buffer=self.chunksize,
-                                  stream_callback=self.new_frame, input_device_index = index)
-
-
-        self.lock = threading.Lock()
-        self.stop = False
-        self.frames = []
-        atexit.register(self.close)
+                                  stream_callback=self.new_frame, input_device_index=index)
 
     def new_frame(self, data, frame_count, time_info, status):
         data = np.fromstring(data, 'int16')
@@ -72,13 +83,19 @@ class SoundRecorder(object):
             return frames
 
     def start(self):
-        self.stream.start_stream()
+        if(self.stream == 0):
+            return
+        else:
+            self.stream.start_stream()
 
     def close(self):
-        with self.lock:
-            self.stop = True
-        self.stream.close()
-        self.p.terminate()
+        if (self.stream == 0):
+            return
+        else:
+            with self.lock:
+                self.stop = True
+            self.stream.close()
+            self.p.terminate()
 
 
 class MplFigure(object):
@@ -91,17 +108,20 @@ class LiveFFTWidget(QtWidgets.QWidget):
     def __init__(self):
         QtWidgets.QWidget.__init__(self)
 
+        #init class data # note: flipped from being after initUI
+        self.initData()
+
         # customize the UI
         self.initUI()
 
-        # init class data
-        self.initData()
 
         # connect slots
         self.connectSlots()
 
         # init MPL widget
         self.initMplWidget()
+
+
 
     def initUI(self):
         # timer for calls, taken from:
@@ -126,6 +146,21 @@ class LiveFFTWidget(QtWidgets.QWidget):
         self.startButton = startButton
         self.stopButton = stopButton
 
+        # define chooseInput section
+        hbox_chooseInput = QtWidgets.QHBoxLayout()
+        comboLabel = QtWidgets.QLabel("Audio Input: ")
+        comboLabel.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
+        self.comboBox = QtWidgets.QComboBox()
+        self.comboBox.addItem("No Input Selected")
+        for item in self.sound.choices:
+            self.comboBox.addItem(item)
+        self.comboBox.activated[str].connect(self.sound.chooseInput)
+        self.refreshButton = QtWidgets.QPushButton("Refresh Options")
+        self.refreshButton.clicked.connect(lambda: self.updateChoiceUI())
+        hbox_chooseInput.addWidget(comboLabel)
+        hbox_chooseInput.addWidget(self.comboBox)
+        hbox_chooseInput.addWidget(self.refreshButton)
+
         # create a vertical box to hold all items in
         vbox = QtWidgets.QVBoxLayout()
 
@@ -137,6 +172,8 @@ class LiveFFTWidget(QtWidgets.QWidget):
         vbox.addWidget(self.main_figure.toolbar)
         vbox.addWidget(self.main_figure.canvas)
 
+        vbox.addLayout(hbox_chooseInput)
+
         self.setLayout(vbox)
 
         # set the size the window opens to
@@ -144,6 +181,14 @@ class LiveFFTWidget(QtWidgets.QWidget):
         # set the title
         self.setWindowTitle('Sound Visualization')
         self.show()
+
+    def updateChoiceUI(self):
+        self.sound.updateInputOptions()
+        self.comboBox.clear()
+        self.comboBox.addItem("No Input Selected")
+        for item in self.sound.choices:
+            self.comboBox.addItem(item)
+        self.comboBox.update()
 
     def startRecording(self):
         self.timer.start(50)
