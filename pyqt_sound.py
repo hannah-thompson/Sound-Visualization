@@ -27,6 +27,7 @@ class SoundRecorder(object):
         self.rate = rate
         self.chunksize = chunksize
         self.stream = 0
+        self.doRenew = False
 
         # initialize a pyAudio session
         self.p = pyaudio.PyAudio()
@@ -39,14 +40,14 @@ class SoundRecorder(object):
         atexit.register(self.close)
 
     def updateInputOptions(self):
-        # change channel to be USB source
+        if(self.stream != 0):
+            self.do_renew = True
+        self.p.terminate()
+        self.p = pyaudio.PyAudio()
         self.choices.clear()
         info = self.p.get_host_api_info_by_index(0)
         numdevices = info.get('deviceCount')
-
-        # get the index we need to read from
-        # for actual device, want name == "USB Audio CODEC"
-        # when practicing with mic -> "Yeti Stereo Microphone"
+        print(numdevices)
 
         for i in range(0, numdevices):
             if ((self.p.get_device_info_by_host_api_device_index(0, i).get('maxInputChannels')) > 0):
@@ -55,12 +56,16 @@ class SoundRecorder(object):
                 stringLabel = str(name) + " - " + str(index)
                 self.choices.append(stringLabel)
 
+        print(self.choices)
+
     def chooseInput(self, text):
         if(text == "No Input Selected"):
             return
         else:
             parts = text.split()
             index = int(parts[-1])
+            if((self.stream != 0) and self.doRenew):
+                self.p.close(self.stream)
             self.stream = self.p.open(format=pyaudio.paInt16,
                                   channels=1,
                                   rate=self.rate,
@@ -159,6 +164,7 @@ class LiveFFTWidget(QtWidgets.QWidget):
         self.refreshButton.clicked.connect(lambda: self.updateChoiceUI())
         hbox_chooseInput.addWidget(comboLabel)
         hbox_chooseInput.addWidget(self.comboBox)
+        # refresh button doesn't work yet, will comment out for now
         hbox_chooseInput.addWidget(self.refreshButton)
 
         # create a vertical box to hold all items in
@@ -183,7 +189,9 @@ class LiveFFTWidget(QtWidgets.QWidget):
         self.show()
 
     def updateChoiceUI(self):
+        print("before:" , self.sound.choices)
         self.sound.updateInputOptions()
+        print("after:", self.sound.choices)
         self.comboBox.clear()
         self.comboBox.addItem("No Input Selected")
         for item in self.sound.choices:
