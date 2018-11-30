@@ -4,8 +4,17 @@
 
 ### NOTES ###
 # sine tone generater with Hz, sliding bar (other goal) -> separate
-# note to self: might want to add in functionality where you can pick your sound source,
-# in order to be more adaptable
+# frequency range from 0 to 1000 Hz # two frequencies
+# each with own amplitude measure
+# two frequencies displayed graphically separately
+# at top have overlay
+# fine and gross control with radio buttons // check for lag
+# can we get the internal audio to route here?
+# OR can we represent beats graphically without real time input..?
+# have play/ stop button
+# have ms
+# other axis should scale to -1 to 1
+# need to be able to measure amplitude at any point and want this scaled (height of wave)
 
 import sys
 import threading
@@ -47,7 +56,6 @@ class SoundRecorder(object):
         self.choices.clear()
         info = self.p.get_host_api_info_by_index(0)
         numdevices = info.get('deviceCount')
-        print(numdevices)
 
         for i in range(0, numdevices):
             if ((self.p.get_device_info_by_host_api_device_index(0, i).get('maxInputChannels')) > 0):
@@ -55,8 +63,6 @@ class SoundRecorder(object):
                 index = i
                 stringLabel = str(name) + " - " + str(index)
                 self.choices.append(stringLabel)
-
-        print(self.choices)
 
     def chooseInput(self, text):
         if(text == "No Input Selected"):

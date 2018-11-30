@@ -2,7 +2,7 @@
 This project will visually representing sine waves being read in real time from an electric guitar.
 
 ## Code Updates
-pyqt_sound.py has been updated for our needs, and now includes "Start Recording" and "Stop Recording" buttons and functionalities. 
+pyqt_sound.py has been updated for our needs, and now includes "Start Recording" and "Stop Recording" buttons and functionalities, as well as an option to choose audio input. 
 
 The files denoted "practice," will remain in the repo while research is being done, but currently do not serve a purpose outside of idea generation.
 
@@ -10,7 +10,28 @@ The files denoted "practice," will remain in the repo while research is being do
 
 These instructions will help you install the dependencies necessary to run this program.
 
-### Installing PyQt5
+### For Mac
+
+#### Installing Python
+**Important Note:** The latest version of Python is 3.7, but you must download 3.6 or below in order for PyAudio to work
+Go to [python downloads](https://www.python.org/downloads/) and choose the option to download Python 3.6 and run the installer.
+
+#### Installing pip3
+Securely download pip3 from this [link](https://pip.pypa.io/en/stable/installing/).
+
+In the terminal, navigate to the place where you have download the file:
+```
+cd <file path to where you download file>
+```
+an example filepath would be /Users/Jim/Downloads
+
+Once in the proper folder, run the following commands:
+```
+python3 get-pip.py
+which pip3
+```
+
+#### Installing PyQt5
 
 Run the following commands in terminal:
 
@@ -18,32 +39,15 @@ Run the following commands in terminal:
 pip3 install PyQt5
 ```
 
-### Installing matplotlib
+#### Installing matplotlib
 
 Run the following commands in terminal:
 
 ```
 pip3 install matplotlib
 ```
-### Installing Kivy
 
-Run the following commands in terminal:
-
-```
-pip3 install kivy
-```
-
-### Installing Bokeh
-
-Run the following commands in terminal:
-
-```
-pip3 install numpy
-```
-```
-pip3 install bokeh
-```
-### Installing PyAudio
+#### Installing PyAudio
 
 Run the following commands in terminal:
 
@@ -52,4 +56,66 @@ curl https://bootstrap.pypa.io/get-pip.py | sudo python3
 ```
 ```
 pip3 install PyAudio
+```
+
+### For Windows
+
+#### Installing Python
+**Important Note:** The latest version of Python is 3.7, but you must download 3.6 or below in order for PyAudio to work
+Go to [python downloads](https://www.python.org/downloads/) and choose the option to download Python 3.6 and run the installer.
+
+#### Installing PyQt5
+Run the following commands in terminal:
+
+```
+py -m pip install PyQt5
+```
+
+#### Installing matplotlib
+
+Run the following commands in terminal:
+
+```
+py -m pip install matplotlib
+```
+
+#### Installing PyAudio
+
+Run the following commands in terminal:
+
+```
+curl https://bootstrap.pypa.io/get-pip.py | py
+```
+```
+py -m pip install PyAudio
+```
+
+**If you are getting an error about C++ Visualizer, complete the following steps:**
+1. Install Visual Studio [here](https://visualstudio.microsoft.com/thank-you-downloading-visual-studio/?sku=BuildTools&rel=15)
+2. When installing, select: workload-> Visual C++ build tools; AND install options: select only the “Windows 10 SDK” (assuming the computer is Windows 10)
+
+## Running pyqt_sound.py
+
+### On Mac
+Go to terminal and navigate to where you have downloaded pyqt_sound.py
+```
+cd <file path to where you download file>
+```
+an example filepath would be /Users/Jim/Downloads
+
+Once there, run the following command to run the program:
+```
+python3 pyqt_sound.py
+```
+
+### On Windows
+Go to terminal and navigate to where you have downloaded pyqt_sound.py
+```
+cd <file path to where you download file>
+```
+an example filepath would be /Users/Jim/Downloads
+
+Once there, run the following command to run the program:
+```
+py pyqt_sound.py
 ```
