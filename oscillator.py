@@ -3,25 +3,16 @@
 # https://github.com/flothesof/LiveFFTPitchTracker
 
 ### NOTES ###
-# sine tone generater with Hz, sliding bar (other goal) -> separate
-# frequency range from 0 to 1000 Hz # two frequencies
-# each with own amplitude measure
-# two frequencies displayed graphically separately
 # at top have overlay
 # fine and gross control with radio buttons // check for lag
-# can we get the internal audio to route here?
-# OR can we represent beats graphically without real time input..?
-# have play/ stop button
-# have ms
-# other axis should scale to -1 to 1
-# need to be able to measure amplitude at any point and want this scaled (height of wave)
 
-# NOTE: use timer to implement the sine wave sound and remember to connect to stop/start buttons as well as frequency
+
 
 import sys
 import pyaudio
 import numpy as np
 import matplotlib
+import struct
 matplotlib.use("TkAgg")
 from matplotlib import figure
 from PyQt5 import QtGui, QtCore, QtWidgets
@@ -46,6 +37,8 @@ class LiveFFTWidget(QtWidgets.QWidget):
         self.boolShowOverlay = False
         self.y = 0
         self.y1 = 0
+        self.isPlaying1 = False
+        self.isPlaying2 = False
 
         # customize the UI
         self.initUI()
@@ -53,15 +46,15 @@ class LiveFFTWidget(QtWidgets.QWidget):
         # init MPL widget
         self.initMplWidget()
 
+        # generate initial pitch of 0
+        self.generatePitch1()
+        #self.generatePitch2()
+
     def initUI(self):
         # create a timer to keep calling sound file
         timer = QtCore.QTimer()
-        timer.timeout.connect(self.generatePitch1)
+        timer.timeout.connect(self.play_Pitch)
         self.timer = timer
-
-        timer1 = QtCore.QTimer()
-        timer1.timeout.connect(self.generatePitch2)
-        self.timer1 = timer1
 
         # will hold all of the controls
         vbox_FreqControls = QtWidgets.QVBoxLayout()
@@ -197,6 +190,7 @@ class LiveFFTWidget(QtWidgets.QWidget):
 
         hbox_lastRow = QtWidgets.QHBoxLayout()
 
+        '''
         hbox_showHideButtons = QtWidgets.QHBoxLayout()
         showOverlayButton = QtWidgets.QPushButton("Show Overlay")
         showOverlayButton.clicked.connect(lambda: self.showOverlay())
@@ -206,6 +200,7 @@ class LiveFFTWidget(QtWidgets.QWidget):
         hbox_showHideButtons.addWidget(hideOverlayButton)
 
         hbox_lastRow.addLayout(hbox_showHideButtons)
+        '''
 
         vbox_graph3 = QtWidgets.QVBoxLayout()
         self.main_figure2 = MplFigure(self)
@@ -232,24 +227,35 @@ class LiveFFTWidget(QtWidgets.QWidget):
         self.show()
 
     def startPlaying(self):
-        self.timer.start()
+        self.isPlaying1 = True
+        self.generatePitch1()
+        self.start()
 
     def stopPlaying(self):
-        self.timer.stop()
-        self.stream.stop_stream()
-        self.stream.close()
+        self.isPlaying1 = False
+        self.stop()
 
-        self.p.terminate()
+    def stop(self):
+        if((self.isPlaying1 == False) & (self.isPlaying2 == False)):
+            self.timer.stop()
+            self.stream.stop_stream()
+            self.stream.close()
+            self.p.terminate()
+        else:
+            self.generatePitch1()
+
+    def start(self):
+        self.timer.start()
 
     def startPlaying1(self):
-        self.timer1.start()
+        self.isPlaying2 = True
+        self.generatePitch1()
+        self.start()
 
     def stopPlaying1(self):
-        self.timer1.stop()
-        self.stream1.stop_stream()
-        self.stream1.close()
+        self.isPlaying2 = False
+        self.stop()
 
-        self.p1.terminate()
 
     def showOverlay(self):
         self.boolShowOverlay = True
@@ -271,15 +277,20 @@ class LiveFFTWidget(QtWidgets.QWidget):
     # note to self: need to find way to get rid of clipping
     def generatePitch1(self):
         self.p = pyaudio.PyAudio()
-        volume = self.currentAmplitude1  # range [0.0, 1.0]
         fs = 44100  # sampling rate, Hz, must be integer
-        f = self.currentFrequency1  # sine frequency, Hz, may be float
-        duration = 1.0
+        duration = 1
+        equation1 = (np.sin(2 * np.pi * np.arange(fs * duration) * 0 / fs))
+        if(self.isPlaying1):
+            f1 = self.currentFrequency1
+            volume1 = self.currentAmplitude1
+            equation1 = volume1*(np.sin(2 * np.pi * np.arange(fs * duration) * f1 / fs))
+        equation2 = (np.sin(2 * np.pi * np.arange(fs * duration) * 0 / fs))
+        if(self.isPlaying2):
+            f2 = self.currentFrequency2
+            volume2 = self.currentAmplitude2
+            equation2 = volume2 * (np.sin(2 * np.pi * np.arange(fs * duration) * f2 / fs))
         # generate samples, note conversion to float32 array
-        samples = (np.sin(2 * np.pi * np.arange(fs * duration) * f / fs)).astype(np.float32)
-        samples = samples + self.lastSample1
-        # this didn't fix it
-        self.lastSample1 = samples[-1]
+        self.samples = (equation1 + equation2).astype(np.float32).tobytes()
 
         # for paFloat32 sample values must be in range [-1.0, 1.0]
         self.stream = self.p.open(format=pyaudio.paFloat32,
@@ -287,27 +298,8 @@ class LiveFFTWidget(QtWidgets.QWidget):
                                   rate=fs,
                                   output=True)
 
-        self.stream.write(volume * samples)
-
-    def generatePitch2(self):
-        self.p1 = pyaudio.PyAudio()
-        volume = self.currentAmplitude2  # range [0.0, 1.0]
-        fs = 44100  # sampling rate, Hz, must be integer
-        f = self.currentFrequency2  # sine frequency, Hz, may be float
-        duration = 1.0
-        # generate samples, note conversion to float32 array
-        samples = (np.sin(2 * np.pi * np.arange(fs * duration) * f / fs)).astype(np.float32)
-        #samples = samples + self.lastSample1
-        # this didn't fix it
-        #self.lastSample1 = samples[-1]
-
-        # for paFloat32 sample values must be in range [-1.0, 1.0]
-        self.stream1 = self.p1.open(format=pyaudio.paFloat32,
-                                  channels=1,
-                                  rate=fs,
-                                  output=True)
-
-        self.stream1.write(volume * samples)
+    def play_Pitch(self):
+        self.stream.write(self.samples)
 
     def changeFrequency1(self):
         self.f =self.radioFreq.value()
@@ -318,12 +310,15 @@ class LiveFFTWidget(QtWidgets.QWidget):
         self.line_top.set_data(self.x, self.y)
 
         #update overlay
-        if(self.boolShowOverlay):
-            self.y2 = self.y + self.y1
-            self.line_final.set_data(self.x, self.y2)
+        #if(self.boolShowOverlay):
+        self.y2 = self.y + self.y1
+        self.line_final.set_data(self.x, self.y2)
 
-            # refreshes the plots
-            self.main_figure2.canvas.draw()
+        # refreshes the plots
+        self.main_figure2.canvas.draw()
+
+        if(self.isPlaying1):
+            self.generatePitch1()
 
         # refreshes the plots
         self.main_figure.canvas.draw()
@@ -337,10 +332,13 @@ class LiveFFTWidget(QtWidgets.QWidget):
         self.line_top.set_data(self.x, self.y)
 
         # change overlay
-        if (self.boolShowOverlay):
-            self.y2 = self.y + self.y1
-            self.line_final.set_data(self.x, self.y2)
-            self.main_figure2.canvas.draw()
+        #if (self.boolShowOverlay):
+        self.y2 = self.y + self.y1
+        self.line_final.set_data(self.x, self.y2)
+        self.main_figure2.canvas.draw()
+
+        if(self.isPlaying1):
+            self.generatePitch1()
 
         # refreshes the plots
         self.main_figure.canvas.draw()
@@ -354,10 +352,13 @@ class LiveFFTWidget(QtWidgets.QWidget):
         self.line_bottom.set_data(self.x, self.y1)
 
         # change overlay
-        if (self.boolShowOverlay):
-            self.y2 = self.y + self.y1
-            self.line_final.set_data(self.x, self.y2)
-            self.main_figure2.canvas.draw()
+        #if (self.boolShowOverlay):
+        self.y2 = self.y + self.y1
+        self.line_final.set_data(self.x, self.y2)
+        self.main_figure2.canvas.draw()
+
+        if (self.isPlaying2):
+            self.generatePitch1()
 
         # refreshes the plots
         self.main_figure1.canvas.draw()
@@ -371,10 +372,13 @@ class LiveFFTWidget(QtWidgets.QWidget):
         self.line_bottom.set_data(self.x, self.y1)
 
         # change overlay
-        if (self.boolShowOverlay):
-            self.y2 = self.y + self.y1
-            self.line_final.set_data(self.x, self.y2)
-            self.main_figure2.canvas.draw()
+        #if (self.boolShowOverlay):
+        self.y2 = self.y + self.y1
+        self.line_final.set_data(self.x, self.y2)
+        self.main_figure2.canvas.draw()
+
+        if (self.isPlaying2):
+            self.generatePitch1()
 
         # refreshes the plots
         self.main_figure1.canvas.draw()
@@ -417,9 +421,10 @@ class LiveFFTWidget(QtWidgets.QWidget):
         # COMBINED PLOT
         self.cx_top = self.main_figure2.figure.add_subplot(111)  # changing to 111 makes bigger
 
-        self.cx_top.set_ylim(-1, 1)
+        self.cx_top.set_ylim(-2, 2)
         self.cx_top.set_xlim(0, 1000)
         self.cx_top.set_xlabel(u'time (ms)', fontsize=6)
+        self.cx_top.set_title("Overlay")
 
         self.f2 = 0
         self.Fs = 44100
