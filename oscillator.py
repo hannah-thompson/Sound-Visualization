@@ -4,6 +4,8 @@
 # if this is an issue we can force the sound to stop
 # if the user starts to use the controls, forcing to press play again?
 
+# add in phase setter (dial 0 to 360 degrees convert to pi) # increments of 5
+
 
 import sys
 import pyaudio
@@ -39,6 +41,8 @@ class Oscillator(QtWidgets.QWidget):
         self.y1 = 0
         self.isPlaying1 = False
         self.isPlaying2 = False
+        self.phase1 = 0
+        self.phase2 = 0
 
         # customize the UI
         self.initUI()
@@ -106,7 +110,7 @@ class Oscillator(QtWidgets.QWidget):
         self.ampSlider = QtWidgets.QSlider(QtCore.Qt.Horizontal)
         self.ampSlider.setRange(0,100)
         self.ampSlider.setValue(100)
-        self.currentAmp = QtWidgets.QLabel("1 Db")
+        self.currentAmp = QtWidgets.QLabel("1 V")
         self.ampSlider.valueChanged.connect(lambda: self.changeAmplitude1())
         hbox_AmpChooser.addWidget(self.ampSlider)
         hbox_AmpChooser.addWidget(self.currentAmp)
@@ -194,7 +198,7 @@ class Oscillator(QtWidgets.QWidget):
         self.ampSlider1 = QtWidgets.QSlider(QtCore.Qt.Horizontal)
         self.ampSlider1.setRange(0, 100)
         self.ampSlider1.setValue(100)
-        self.currentAmp1 = QtWidgets.QLabel("1 Db")
+        self.currentAmp1 = QtWidgets.QLabel("1 V")
         self.ampSlider1.valueChanged.connect(lambda: self.changeAmplitude2())
         hbox_AmpChooser1.addWidget(self.ampSlider1)
         hbox_AmpChooser1.addWidget(self.currentAmp1)
@@ -340,7 +344,8 @@ class Oscillator(QtWidgets.QWidget):
         if(self.isPlaying1):
             f1 = self.currentFrequency1
             volume1 = self.currentAmplitude1
-            equation1 = volume1*(np.sin(2 * np.pi * np.arange(fs * duration) * f1 / fs))
+            # added pi
+            equation1 = volume1*(np.sin((2 * np.pi * np.arange(fs * duration) * f1 / fs)+ np.pi))
 
         # equation generated from middle row
         equation2 = (np.sin(2 * np.pi * np.arange(fs * duration) * 0 / fs))
@@ -393,7 +398,7 @@ class Oscillator(QtWidgets.QWidget):
     def changeAmplitude1(self):
         self.amplitude = self.ampSlider.value()/100
         self.currentAmplitude1 = self.amplitude
-        self.currentAmp.setText(str(self.amplitude) + " Db")
+        self.currentAmp.setText(str(self.amplitude) + " V")
         self.currentAmp.update()
         self.y = self.amplitude * np.sin(2 * np.pi * self.f * self.x / self.Fs)
         self.line_top.set_data(self.x, self.y)
@@ -440,7 +445,7 @@ class Oscillator(QtWidgets.QWidget):
     def changeAmplitude2(self):
         self.amplitude1 = self.ampSlider1.value()/100
         self.currentAmplitude2 = self.amplitude1
-        self.currentAmp1.setText(str(self.amplitude1) + " Db")
+        self.currentAmp1.setText(str(self.amplitude1) + " V")
         self.currentAmp1.update()
         self.y1 = self.amplitude1 * np.sin(2 * np.pi * self.f1 * self.x / self.Fs)
         self.line_bottom.set_data(self.x, self.y1)
