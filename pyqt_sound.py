@@ -3,18 +3,6 @@
 # https://github.com/flothesof/LiveFFTPitchTracker
 
 ### NOTES ###
-# sine tone generater with Hz, sliding bar (other goal) -> separate
-# frequency range from 0 to 1000 Hz # two frequencies
-# each with own amplitude measure
-# two frequencies displayed graphically separately
-# at top have overlay
-# fine and gross control with radio buttons // check for lag
-# can we get the internal audio to route here?
-# OR can we represent beats graphically without real time input..?
-# have play/ stop button
-# have ms
-# other axis should scale to -1 to 1
-# need to be able to measure amplitude at any point and want this scaled (height of wave)
 
 import sys
 import threading
@@ -48,6 +36,7 @@ class SoundRecorder(object):
         self.frames = []
         atexit.register(self.close)
 
+    # used to update audio input options
     def updateInputOptions(self):
         if(self.stream != 0):
             self.do_renew = True
@@ -64,7 +53,9 @@ class SoundRecorder(object):
                 stringLabel = str(name) + " - " + str(index)
                 self.choices.append(stringLabel)
 
+    # chooses the channel based on user audio input choice
     def chooseInput(self, text):
+        # if don't choose input, return
         if(text == "No Input Selected"):
             return
         else:
@@ -79,6 +70,7 @@ class SoundRecorder(object):
                                   frames_per_buffer=self.chunksize,
                                   stream_callback=self.new_frame, input_device_index=index)
 
+    # creates new frame
     def new_frame(self, data, frame_count, time_info, status):
         data = np.fromstring(data, 'int16')
         with self.lock:
@@ -87,18 +79,21 @@ class SoundRecorder(object):
                 return None, pyaudio.paComplete
         return None, pyaudio.paContinue
 
+    # retrieves frames
     def get_frames(self):
         with self.lock:
             frames = self.frames
             self.frames = []
             return frames
 
+    # start playing stream
     def start(self):
         if(self.stream == 0):
             return
         else:
             self.stream.start_stream()
 
+    # close currently playing stream
     def close(self):
         if (self.stream == 0):
             return
@@ -108,18 +103,19 @@ class SoundRecorder(object):
             self.stream.close()
             self.p.terminate()
 
-
+# define a graph figure
 class MplFigure(object):
     def __init__(self, parent):
         self.figure = figure.Figure(facecolor='white')
         self.canvas = FigureCanvas(self.figure)
         self.toolbar = NavigationToolbar(self.canvas, parent)
 
-class LiveFFTWidget(QtWidgets.QWidget):
+# creates the widget that graphs the live recording
+class LiveRecorderWidget(QtWidgets.QWidget):
     def __init__(self):
         QtWidgets.QWidget.__init__(self)
 
-        #init class data # note: flipped from being after initUI
+        # initializes data
         self.initData()
 
         # customize the UI
@@ -129,18 +125,15 @@ class LiveFFTWidget(QtWidgets.QWidget):
         # connect slots
         self.connectSlots()
 
-        # init MPL widget
+        # initialize original MPL widget
         self.initMplWidget()
 
 
 
     def initUI(self):
-        # timer for calls, taken from:
-        # http://ralsina.me/weblog/posts/BB974.html
+        # timer to be called to handle incoming data
         timer = QtCore.QTimer()
         timer.timeout.connect(self.handleNewData)
-        # timer.start(50) # don't start until hit "start button"
-        # keep reference to timer
         self.timer = timer
 
         # create start and stop button
@@ -157,7 +150,7 @@ class LiveFFTWidget(QtWidgets.QWidget):
         self.startButton = startButton
         self.stopButton = stopButton
 
-        # define chooseInput section
+        # define chooseInput section and refresh button
         hbox_chooseInput = QtWidgets.QHBoxLayout()
         comboLabel = QtWidgets.QLabel("Audio Input: ")
         comboLabel.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
@@ -170,7 +163,6 @@ class LiveFFTWidget(QtWidgets.QWidget):
         self.refreshButton.clicked.connect(lambda: self.updateChoiceUI())
         hbox_chooseInput.addWidget(comboLabel)
         hbox_chooseInput.addWidget(self.comboBox)
-        # refresh button doesn't work yet, will comment out for now
         hbox_chooseInput.addWidget(self.refreshButton)
 
         # create a vertical box to hold all items in
@@ -194,22 +186,24 @@ class LiveFFTWidget(QtWidgets.QWidget):
         self.setWindowTitle('Sound Visualization')
         self.show()
 
+    # called when user hits refresh choices
     def updateChoiceUI(self):
-        print("before:" , self.sound.choices)
         self.sound.updateInputOptions()
-        print("after:", self.sound.choices)
         self.comboBox.clear()
         self.comboBox.addItem("No Input Selected")
         for item in self.sound.choices:
             self.comboBox.addItem(item)
         self.comboBox.update()
 
+    # start timer to start gathering new data (connected to start button)
     def startRecording(self):
         self.timer.start(50)
 
+    # stop timer to stop gathering new data (connected to stop button)
     def stopRecording(self):
         self.timer.stop()
 
+    # initialize our sound recorder object and data
     def initData(self):
         sound = SoundRecorder()
         sound.start()
@@ -223,16 +217,18 @@ class LiveFFTWidget(QtWidgets.QWidget):
     def connectSlots(self):
         pass
 
+    # defines our specific instance of the graph
     def initMplWidget(self):
         # create the plot to represent the sound wave
-        self.ax_top = self.main_figure.figure.add_subplot(211)
-        self.ax_top.set_ylim(-32768, 32768)
+        self.ax_top = self.main_figure.figure.add_subplot(111)
+        self.ax_top.set_ylim(-10000, 10000)
         self.ax_top.set_xlim(0, self.time_vect.max())
         self.ax_top.set_xlabel(u'time (ms)', fontsize=6)
 
         self.line_top, = self.ax_top.plot(self.time_vect,
                                          np.ones_like(self.time_vect))
 
+    # updates our graph as the data comes in
     def handleNewData(self):
         """ handles the asynchroneously collected sound chunks """
         # gets the latest frames
@@ -247,8 +243,8 @@ class LiveFFTWidget(QtWidgets.QWidget):
             # refreshes the plots
             self.main_figure.canvas.draw()
 
-
+# run our code
 if __name__ == "__main__":
     app = QtWidgets.QApplication(sys.argv)
-    window = LiveFFTWidget()
+    window = LiveRecorderWidget()
     sys.exit(app.exec_())
