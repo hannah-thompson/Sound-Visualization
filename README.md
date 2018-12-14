@@ -2,7 +2,9 @@
 This project will visually representing sine waves being read in real time from an electric guitar.
 
 ## Code Updates
-pyqt_sound.py has been updated for our needs, and now includes "Start Recording" and "Stop Recording" buttons and functionalities, as well as an option to choose audio input. 
+pyqt_sound.py is fully functional, graphing based on the audio input chosen by the user.
+
+oscillator.py is a fully functional oscillator where the user can generate two sine wave and hear and see them overlaid on top of each other.
 
 The files denoted "practice," will remain in the repo while research is being done, but currently do not serve a purpose outside of idea generation.
 
@@ -21,7 +23,7 @@ Securely download pip3 from this [link](https://pip.pypa.io/en/stable/installing
 
 In the terminal, navigate to the place where you have download the file:
 ```
-cd <file path to where you download file>
+cd <file path to where you downloaded file>
 ```
 an example filepath would be /Users/Jim/Downloads
 
@@ -99,7 +101,7 @@ py -m pip install PyAudio
 ### On Mac
 Go to terminal and navigate to where you have downloaded pyqt_sound.py
 ```
-cd <file path to where you download file>
+cd <file path to where you downloaded file>
 ```
 an example filepath would be /Users/Jim/Downloads
 
@@ -111,11 +113,36 @@ python3 pyqt_sound.py
 ### On Windows
 Go to terminal and navigate to where you have downloaded pyqt_sound.py
 ```
-cd <file path to where you download file>
+cd <file path to where you downloaded file>
 ```
 an example filepath would be /Users/Jim/Downloads
 
 Once there, run the following command to run the program:
 ```
 py pyqt_sound.py
+```
+## Running oscillator.py
+
+### On Mac
+Go to terminal and navigate to where you have downloaded pyqt_sound.py
+```
+cd <file path to where you downloaded file>
+```
+an example filepath would be /Users/Jim/Downloads
+
+Once there, run the following command to run the program:
+```
+python3 oscillator.py
+```
+
+### On Windows
+Go to terminal and navigate to where you have downloaded pyqt_sound.py
+```
+cd <file path to where you downloaded file>
+```
+an example filepath would be /Users/Jim/Downloads
+
+Once there, run the following command to run the program:
+```
+py oscillator.py
 ```
