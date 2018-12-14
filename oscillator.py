@@ -1,10 +1,4 @@
 ### NOTES ###
-# unclear if there is a way to produce the sound
-# without the lag that it causes to the controls
-# if this is an issue we can force the sound to stop
-# if the user starts to use the controls, forcing to press play again?
-
-# add in phase setter (dial 0 to 360 degrees convert to pi) # increments of 5
 
 
 import sys
@@ -43,6 +37,7 @@ class Oscillator(QtWidgets.QWidget):
         self.isPlaying2 = False
         self.phase1 = 0
         self.phase2 = 0
+        self.zoom = 1000
 
         # customize the UI
         self.initUI()
@@ -100,6 +95,27 @@ class Oscillator(QtWidgets.QWidget):
         vbox_fineTune1.addWidget(self.fineTuneRadio)
 
         hbox_FreqKnobs.addLayout(vbox_fineTune1)
+
+        # top row phase box and label
+        vbox_phase1 = QtWidgets.QVBoxLayout()
+        phaseLabel1 = QtWidgets.QLabel("Change Phase:")
+        vbox_phase1.addWidget(phaseLabel1)
+
+        # top row phase dial
+        hbox_phaseAndLabel = QtWidgets.QHBoxLayout()
+        phaseRadio = QtWidgets.QDial()
+        phaseRadio.setNotchesVisible(True)
+        phaseRadio.setRange(0, 72)
+        phaseRadio.setNotchTarget(1)
+        phaseRadio.setValue(0)
+        phaseRadio.valueChanged.connect(lambda: self.changePhase1())
+        self.phaseRadio = phaseRadio
+        hbox_phaseAndLabel.addWidget(self.phaseRadio)
+        self.phaseValueLabel1 = QtWidgets.QLabel("0 \xb0")
+        hbox_phaseAndLabel.addWidget(self.phaseValueLabel1)
+        vbox_phase1.addLayout(hbox_phaseAndLabel)
+
+        hbox_FreqKnobs.addLayout(vbox_phase1)
 
         # add top row amplitude Label
         ampLabel = QtWidgets.QLabel("Choose First Amplitude:")
@@ -189,6 +205,27 @@ class Oscillator(QtWidgets.QWidget):
 
         hbox_FreqKnobs1.addLayout(vbox_fineTune2)
 
+        # middle row phase box and label
+        vbox_phase2 = QtWidgets.QVBoxLayout()
+        phaseLabel2 = QtWidgets.QLabel("Change Phase:")
+        vbox_phase2.addWidget(phaseLabel2)
+
+        # top row phase dial
+        hbox_phaseAndLabel1 = QtWidgets.QHBoxLayout()
+        phaseRadio1 = QtWidgets.QDial()
+        phaseRadio1.setNotchesVisible(True)
+        phaseRadio1.setRange(0, 72)
+        phaseRadio1.setNotchTarget(1)
+        phaseRadio1.setValue(0)
+        phaseRadio1.valueChanged.connect(lambda: self.changePhase2())
+        self.phaseRadio1 = phaseRadio1
+        hbox_phaseAndLabel1.addWidget(self.phaseRadio1)
+        self.phaseValueLabel2 = QtWidgets.QLabel("0 \xb0")
+        hbox_phaseAndLabel1.addWidget(self.phaseValueLabel2)
+        vbox_phase2.addLayout(hbox_phaseAndLabel1)
+
+        hbox_FreqKnobs1.addLayout(vbox_phase2)
+
         # add middle row amplitude Label
         ampLabel1 = QtWidgets.QLabel("Choose Second Amplitude:")
         vbox_FreqControls1.addWidget(ampLabel1)
@@ -254,6 +291,18 @@ class Oscillator(QtWidgets.QWidget):
         hbox_lastRow.addLayout(hbox_showHideButtons)
         '''
 
+        hbox_zoom = QtWidgets.QHBoxLayout()
+        zoomTitle = QtWidgets.QLabel("Change x-axis (zoom):")
+        hbox_zoom.addWidget(zoomTitle)
+
+        self.zoomSlider = QtWidgets.QSlider(QtCore.Qt.Horizontal)
+        self.zoomSlider.setRange(1, 12000)
+        self.zoomSlider.setValue(1000)
+        hbox_zoom.addWidget(self.zoomSlider)
+        self.currentZoom = QtWidgets.QLabel("1000 ms")
+        self.zoomSlider.valueChanged.connect(lambda: self.changeZoom())
+        hbox_zoom.addWidget(self.currentZoom)
+
         # create the overlay graph
         vbox_graph3 = QtWidgets.QVBoxLayout()
         self.main_figure2 = MplFigure(self)
@@ -270,6 +319,7 @@ class Oscillator(QtWidgets.QWidget):
         # add in the 3 rows to the final vertical holder
         vbox.addLayout(hbox_TopRow)
         vbox.addLayout(hbox_MiddleRow)
+        vbox.addLayout(hbox_zoom)
         vbox.addLayout(hbox_lastRow)
 
         self.setLayout(vbox)
@@ -344,8 +394,9 @@ class Oscillator(QtWidgets.QWidget):
         if(self.isPlaying1):
             f1 = self.currentFrequency1
             volume1 = self.currentAmplitude1
+            phase1 = self.phase1
             # added pi
-            equation1 = volume1*(np.sin((2 * np.pi * np.arange(fs * duration) * f1 / fs)+ np.pi))
+            equation1 = volume1*(np.sin((2 * np.pi * np.arange(fs * duration) * f1 / fs)+ phase1))
 
         # equation generated from middle row
         equation2 = (np.sin(2 * np.pi * np.arange(fs * duration) * 0 / fs))
@@ -353,7 +404,8 @@ class Oscillator(QtWidgets.QWidget):
         if(self.isPlaying2):
             f2 = self.currentFrequency2
             volume2 = self.currentAmplitude2
-            equation2 = volume2 * (np.sin(2 * np.pi * np.arange(fs * duration) * f2 / fs))
+            phase2 = self.phase2
+            equation2 = volume2 * (np.sin((2 * np.pi * np.arange(fs * duration) * f2 / fs)+phase2))
         # generate samples
         self.samples = (equation1 + equation2).astype(np.float32).tobytes()
 
@@ -375,7 +427,31 @@ class Oscillator(QtWidgets.QWidget):
         self.currentFrequency1 = self.f
         self.currentFreq.setText(str(self.f) + " Hz")
         self.currentFreq.update()
-        self.y = self.amplitude*np.sin(2 * np.pi * self.f * self.x / self.Fs)
+        self.y = self.amplitude*np.sin((2 * np.pi * self.f * self.x / self.Fs)+self.phase1)
+        self.line_top.set_data(self.x, self.y)
+
+        #update overlay
+        #if(self.boolShowOverlay): # was used back when had show/hide button
+        self.y2 = self.y + self.y1
+        self.line_final.set_data(self.x, self.y2)
+
+        # refreshes the plots
+        self.main_figure2.canvas.draw()
+
+        # regenerates pitch if currently playing
+        if(self.isPlaying1):
+            self.generatePitch1()
+
+        # refreshes the plots
+        self.main_figure.canvas.draw()
+
+    def changePhase1(self):
+        phaseVal = (self.phaseRadio.value())*5
+        self.phase1 = (phaseVal)*(np.pi / 180)
+        # update label
+        self.phaseValueLabel1.setText(str(phaseVal) + "\xb0")
+        self.phaseValueLabel1.update()
+        self.y = self.amplitude*np.sin((2 * np.pi * self.f * self.x / self.Fs)+self.phase1)
         self.line_top.set_data(self.x, self.y)
 
         #update overlay
@@ -400,7 +476,7 @@ class Oscillator(QtWidgets.QWidget):
         self.currentAmplitude1 = self.amplitude
         self.currentAmp.setText(str(self.amplitude) + " V")
         self.currentAmp.update()
-        self.y = self.amplitude * np.sin(2 * np.pi * self.f * self.x / self.Fs)
+        self.y = self.amplitude * np.sin((2 * np.pi * self.f * self.x / self.Fs)+self.phase1)
         self.line_top.set_data(self.x, self.y)
 
         # change overlay
@@ -424,7 +500,7 @@ class Oscillator(QtWidgets.QWidget):
         self.currentFrequency2 = self.f1
         self.currentFreq1.setText(str(self.f1) + " Hz")
         self.currentFreq1.update()
-        self.y1 = self.amplitude1*np.sin(2 * np.pi * self.f1 * self.x / self.Fs)
+        self.y1 = self.amplitude1*np.sin((2 * np.pi * self.f1 * self.x / self.Fs)+self.phase2)
         self.line_bottom.set_data(self.x, self.y1)
 
         # change overlay graph
@@ -440,6 +516,30 @@ class Oscillator(QtWidgets.QWidget):
         # refreshes the plots
         self.main_figure1.canvas.draw()
 
+    def changePhase2(self):
+        phaseVal = (self.phaseRadio1.value())*5
+        self.phase2 = (phaseVal)*(np.pi / 180)
+        # update label
+        self.phaseValueLabel2.setText(str(phaseVal) + "\xb0")
+        self.phaseValueLabel2.update()
+        self.y1 = self.amplitude1*np.sin((2 * np.pi * self.f1 * self.x / self.Fs)+self.phase2)
+        self.line_bottom.set_data(self.x, self.y1)
+
+        #update overlay
+        #if(self.boolShowOverlay): # was used back when had show/hide button
+        self.y2 = self.y + self.y1
+        self.line_final.set_data(self.x, self.y2)
+
+        # updates pitch if playing
+        if (self.isPlaying2):
+            self.generatePitch1()
+
+        # refreshes the plots
+        self.main_figure2.canvas.draw()
+
+        # refreshes the plots
+        self.main_figure1.canvas.draw()
+
     # connected to middle amplitude slider
     # updates label, pitch, and graph
     def changeAmplitude2(self):
@@ -447,11 +547,12 @@ class Oscillator(QtWidgets.QWidget):
         self.currentAmplitude2 = self.amplitude1
         self.currentAmp1.setText(str(self.amplitude1) + " V")
         self.currentAmp1.update()
-        self.y1 = self.amplitude1 * np.sin(2 * np.pi * self.f1 * self.x / self.Fs)
+        self.y1 = self.amplitude1 * np.sin((2 * np.pi * self.f1 * self.x / self.Fs)+self.phase2)
         self.line_bottom.set_data(self.x, self.y1)
 
         # change overlay
         #if (self.boolShowOverlay):
+
         self.y2 = self.y + self.y1
         self.line_final.set_data(self.x, self.y2)
         self.main_figure2.canvas.draw()
@@ -462,6 +563,18 @@ class Oscillator(QtWidgets.QWidget):
 
         # refreshes the plots
         self.main_figure1.canvas.draw()
+
+    def changeZoom(self):
+        self.zoom = self.zoomSlider.value()
+        self.ax_top.set_xlim(0, self.zoom)
+        self.bx_top.set_xlim(0, self.zoom)
+        self.cx_top.set_xlim(0, self.zoom)
+        self.main_figure.canvas.draw()
+        self.main_figure1.canvas.draw()
+        self.main_figure2.canvas.draw()
+
+        self.currentZoom.setText(str(self.zoom)+ " ms")
+        self.currentZoom.update()
 
     # initializes our three graphs (labeled a, b, c)
     def initMplWidget(self):
