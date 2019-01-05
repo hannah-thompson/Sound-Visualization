@@ -146,3 +146,10 @@ Once there, run the following command to run the program:
 ```
 py oscillator.py
 ```
+
+## Using PyInstaller to Package Files
+Start by installing pyinstaller using pip on your machine, then run the following command to create the packaged file:
+
+```
+pyinstaller --onefile --windowed <scriptname.py>
+```
