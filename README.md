@@ -1,5 +1,18 @@
-# Sound-Visualization
-This project will visually representing sine waves being read in real time from an electric guitar.
+# Sound-Visualization and Oscillator
+This project was created under a NSF-STEM grant as a pair to a curriculum to enable rural students to better understand and visualize sound waves.
+
+The sound visualizer will visually representing sine waves being read in real time from the user's selected audio input. The user can stop the recording at any moment and then go back through the graph to further analyze the sound wave.
+
+The oscillator allows the user to manipulate the properties of a sine wave and visually and auditorally see the outcomes. Additionally, they can visualize and hear how two different sound waves interact with eachother by manipulating the second sine wave and observing and hearing the overlay effect.
+
+Both programs were written and run in pure Python.
+
+## Video Examples
+### Oscillator Video
+Here you can observe the manipulating of the sine waves and the subsequent effect within the graphs. Additionally, you see the user press play to listen to the sound the wave would create.
+
+### Sound Visualizer Video
+Here you can observe the user choosing their built-in mic as their input, then making noises and observing the resulting sine waves, and subsequently stopping the audio to further analyze the resulting sine wave.
 
 ## Code Updates
 pyqt_sound.py is fully functional, graphing based on the audio input chosen by the user.
