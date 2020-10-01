@@ -12,6 +12,7 @@ Both programs were written and run in pure Python.
 Here you can observe the manipulating of the sine waves and the subsequent effect within the graphs. Additionally, you see the user press play to listen to the sound the wave would create.
 
 ### Sound Visualizer Video
+![](soundOscillator.gif)
 Here you can observe the user choosing their built-in mic as their input, then making noises and observing the resulting sine waves, and subsequently stopping the audio to further analyze the resulting sine wave.
 
 ## Code Updates
