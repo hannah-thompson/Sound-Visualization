@@ -9,6 +9,7 @@ Both programs were written and run in pure Python.
 
 ## Video Examples
 ### Oscillator Video
+![](sineWaves.gif)
 Here you can observe the manipulating of the sine waves and the subsequent effect within the graphs. Additionally, you see the user press play to listen to the sound the wave would create.
 
 ### Sound Visualizer Video
